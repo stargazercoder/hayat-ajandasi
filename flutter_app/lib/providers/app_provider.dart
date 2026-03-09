@@ -255,6 +255,41 @@ class AppProvider extends ChangeNotifier {
     save(); notifyListeners();
   }
 
+  // ─── UPDATE PROFILE ──────────────────────────────────────────────────────
+  void updateProfile({required String name, required String aname, required double salary}) {
+    userName = name;
+    agendaName = aname.isNotEmpty ? aname : "$name'nın Ajandası";
+    this.salary = salary;
+    save();
+    notifyListeners();
+  }
+
+  // ─── IMPORT FROM JSON ────────────────────────────────────────────────────
+  Future<void> importFromJson(Map<String, dynamic> d) async {
+    userName    = d['userName']  ?? userName;
+    agendaName  = d['agendaName'] ?? agendaName;
+    salary      = (d['salary'] as num?)?.toDouble() ?? salary;
+    isDark      = d['isDark']   ?? isDark;
+    final ac    = d['accentColor'];
+    if (ac != null) accentColor = Color(ac as int);
+    if (d['todos']         != null) todos         = (d['todos'] as List).map((e) => Todo.fromJson(e)).toList();
+    if (d['goals']         != null) goals         = (d['goals'] as List).map((e) => Goal.fromJson(e)).toList();
+    if (d['expenses']      != null) expenses      = (d['expenses'] as List).map((e) => Expense.fromJson(e)).toList();
+    if (d['savings']       != null) savings       = (d['savings'] as List).map((e) => Saving.fromJson(e)).toList();
+    if (d['journal']       != null) journal       = (d['journal'] as List).map((e) => JournalEntry.fromJson(e)).toList();
+    if (d['gratitude']     != null) gratitude     = (d['gratitude'] as List).map((e) => Gratitude.fromJson(e)).toList();
+    if (d['suggestions']   != null) suggestions   = (d['suggestions'] as List).map((e) => Suggestion.fromJson(e)).toList();
+    if (d['sleepLogs']     != null) sleepLogs     = (d['sleepLogs'] as List).map((e) => SleepLog.fromJson(e)).toList();
+    if (d['moodLogs']      != null) moodLogs      = (d['moodLogs'] as List).map((e) => MoodLog.fromJson(e)).toList();
+    if (d['notes']         != null) notes         = (d['notes'] as List).map((e) => AppNote.fromJson(e)).toList();
+    if (d['measurements']  != null) measurements  = (d['measurements'] as List).map((e) => BodyMeasurement.fromJson(e)).toList();
+    if (d['sportPrograms'] != null) sportPrograms = (d['sportPrograms'] as List).map((e) => SportProgram.fromJson(e)).toList();
+    if (d['bingoData']     != null) bingoData     = Map<String, dynamic>.from(d['bingoData']);
+    if (d['letter']        != null) letter        = FutureLetter.fromJson(d['letter']);
+    await save();
+    notifyListeners();
+  }
+
   // ─── SHARED GOALS ────────────────────────────────────────────────────────
   void shareGoal(String goalName, String friendName) {
     sharedGoals.insert(0, {
