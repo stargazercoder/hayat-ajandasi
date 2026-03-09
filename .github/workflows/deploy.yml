@@ -45,7 +45,7 @@ jobs:
         run: |
           flutter build web \
             --release \
-            --base-href "/" \
+            --base-href "/hayat-ajandasi/" \
             --web-renderer canvaskit
 
       - name: 📤 Upload artifact
