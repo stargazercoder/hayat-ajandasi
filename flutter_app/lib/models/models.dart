@@ -420,7 +420,12 @@ class FutureLetter {
 
   FutureLetter({required this.text, required this.writtenAt, required this.unlockAt});
 
-  bool get isUnlocked => DateTime.now().toIso8601String().substring(0, 10) >= unlockAt;
+  bool get isUnlocked {
+    final now = DateTime.now();
+    final unlock = DateTime.tryParse(unlockAt);
+    if (unlock == null) return false;
+    return !now.isBefore(unlock);
+  }
 
   Map<String, dynamic> toJson() =>
       {'text': text, 'writtenAt': writtenAt, 'unlockAt': unlockAt};

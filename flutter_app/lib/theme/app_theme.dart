@@ -48,7 +48,7 @@ class AppTheme {
         surface: surfaceDark,
         onSurface: textDark,
       ),
-      textTheme: GoogleFonts.cabinGroteskTextTheme(ThemeData.dark().textTheme),
+      textTheme: GoogleFonts.dmSansTextTheme(ThemeData.dark().textTheme),
       cardTheme: CardTheme(
         color: surfaceDark,
         shape: RoundedRectangleBorder(
@@ -95,7 +95,7 @@ class AppTheme {
         surface: surfaceLight,
         onSurface: textLight,
       ),
-      textTheme: GoogleFonts.cabinGroteskTextTheme(ThemeData.light().textTheme),
+      textTheme: GoogleFonts.dmSansTextTheme(ThemeData.light().textTheme),
       cardTheme: CardTheme(
         color: surfaceLight,
         shape: RoundedRectangleBorder(
