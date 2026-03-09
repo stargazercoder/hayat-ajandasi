@@ -5,29 +5,20 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Kişisel yaşam ajandanız — görevler, alışkanlıklar, günlük ve daha fazlası.">
-
-  <!-- PWA / Mobil -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Ajanda">
   <meta name="theme-color" content="#0D0D14">
-
-  <!-- iOS ikonları -->
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="152x152" href="icons/Icon-152.png">
   <link rel="apple-touch-icon" sizes="167x167" href="icons/Icon-167.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="192x192" href="icons/Icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/Icon-512.png">
   <link rel="shortcut icon" href="favicon.png">
-
   <title>Hayat Ajandası</title>
   <link rel="manifest" href="manifest.json">
-
   <style>
     body { margin: 0; background-color: #0D0D14; }
     #loading {
@@ -53,14 +44,7 @@
       Hayat Ajandası yükleniyor...
     </p>
   </div>
-
   <script>
-    // Service Worker kayıt
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('flutter_service_worker.js');
-      });
-    }
     window.addEventListener('flutter-first-frame', function () {
       document.getElementById('loading').remove();
     });

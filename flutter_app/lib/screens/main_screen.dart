@@ -426,8 +426,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       title: const Text('Çıkış Yap', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       content: Text(
         prov.isAnonymous
-            ? '⚠️ Anonim hesabındasın. Çıkış yaparsanız verileriniz kaybolabilir!
-Devam etmek istiyorsanız önce email ekleyin.'
+            ? '⚠️ Anonim hesabındasın. Çıkış yaparsanız verileriniz kaybolabilir! Devam etmek istiyorsanız önce email ekleyin.'
             : 'Hesaptan çıkış yapılacak.',
         style: const TextStyle(color: AppTheme.mutedDark, fontSize: 14, height: 1.5),
       ),
