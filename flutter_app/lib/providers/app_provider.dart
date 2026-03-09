@@ -1,11 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
 class AppProvider extends ChangeNotifier {
-  static const _key = 'haj_flutter_1';
+  static const _localKey = 'haj_flutter_1';
+  static const _table    = 'user_data';
+
+  SupabaseClient get _sb => Supabase.instance.client;
+
+  bool _syncing = false;
+  bool get syncing => _syncing;
+  String? syncError;
 
   // User
   String userName = '';
@@ -41,65 +49,124 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ─── LOAD/SAVE ───────────────────────────────────────────────────────────
+
+  // Tüm veriyi map'e çevirir (hem local hem cloud için)
+  Map<String, dynamic> _toMap() => {
+    'userName': userName,
+    'agendaName': agendaName,
+    'salary': salary,
+    'isDark': isDark,
+    'accentColor': accentColor.value,
+    'todos': todos.map((e) => e.toJson()).toList(),
+    'goals': goals.map((e) => e.toJson()).toList(),
+    'expenses': expenses.map((e) => e.toJson()).toList(),
+    'savings': savings.map((e) => e.toJson()).toList(),
+    'journal': journal.map((e) => e.toJson()).toList(),
+    'gratitude': gratitude.map((e) => e.toJson()).toList(),
+    'suggestions': suggestions.map((e) => e.toJson()).toList(),
+    'sleepLogs': sleepLogs.map((e) => e.toJson()).toList(),
+    'moodLogs': moodLogs.map((e) => e.toJson()).toList(),
+    'notes': notes.map((e) => e.toJson()).toList(),
+    'measurements': measurements.map((e) => e.toJson()).toList(),
+    'sportPrograms': sportPrograms.map((e) => e.toJson()).toList(),
+    'bingoData': bingoData,
+    'dailyAnswers': dailyAnswers,
+    'sharedGoals': sharedGoals,
+    'letter': letter?.toJson(),
+  };
+
+  void _fromMap(Map<String, dynamic> d) {
+    userName    = d['userName']  ?? '';
+    agendaName  = d['agendaName'] ?? 'Hayat Ajandası';
+    salary      = (d['salary'] as num?)?.toDouble() ?? 0;
+    isDark      = d['isDark']   ?? true;
+    final ac    = d['accentColor'];
+    if (ac != null) accentColor = Color(ac as int);
+    todos         = (d['todos']         as List? ?? []).map((e) => Todo.fromJson(e)).toList();
+    goals         = (d['goals']         as List? ?? []).map((e) => Goal.fromJson(e)).toList();
+    expenses      = (d['expenses']      as List? ?? []).map((e) => Expense.fromJson(e)).toList();
+    savings       = (d['savings']       as List? ?? []).map((e) => Saving.fromJson(e)).toList();
+    journal       = (d['journal']       as List? ?? []).map((e) => JournalEntry.fromJson(e)).toList();
+    gratitude     = (d['gratitude']     as List? ?? []).map((e) => Gratitude.fromJson(e)).toList();
+    suggestions   = (d['suggestions']   as List? ?? []).map((e) => Suggestion.fromJson(e)).toList();
+    sleepLogs     = (d['sleepLogs']     as List? ?? []).map((e) => SleepLog.fromJson(e)).toList();
+    moodLogs      = (d['moodLogs']      as List? ?? []).map((e) => MoodLog.fromJson(e)).toList();
+    notes         = (d['notes']         as List? ?? []).map((e) => AppNote.fromJson(e)).toList();
+    measurements  = (d['measurements']  as List? ?? []).map((e) => BodyMeasurement.fromJson(e)).toList();
+    sportPrograms = (d['sportPrograms'] as List? ?? []).map((e) => SportProgram.fromJson(e)).toList();
+    bingoData     = Map<String, dynamic>.from(d['bingoData']   ?? {});
+    dailyAnswers  = Map<String, String>.from(d['dailyAnswers'] ?? {});
+    sharedGoals   = List<Map<String, dynamic>>.from(d['sharedGoals'] ?? []);
+    if (d['letter'] != null) letter = FutureLetter.fromJson(d['letter']);
+  }
+
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw != null) {
+    // 1) Önce anonim giriş yap / mevcut oturumu al
+    final session = _sb.auth.currentSession;
+    if (session == null) {
       try {
-        final d = jsonDecode(raw) as Map<String, dynamic>;
-        userName = d['userName'] ?? '';
-        agendaName = d['agendaName'] ?? 'Hayat Ajandası';
-        salary = (d['salary'] as num?)?.toDouble() ?? 0;
-        isDark = d['isDark'] ?? true;
-        final ac = d['accentColor'];
-        if (ac != null) accentColor = Color(ac as int);
-        todos = (d['todos'] as List? ?? []).map((e) => Todo.fromJson(e)).toList();
-        goals = (d['goals'] as List? ?? []).map((e) => Goal.fromJson(e)).toList();
-        expenses = (d['expenses'] as List? ?? []).map((e) => Expense.fromJson(e)).toList();
-        savings = (d['savings'] as List? ?? []).map((e) => Saving.fromJson(e)).toList();
-        journal = (d['journal'] as List? ?? []).map((e) => JournalEntry.fromJson(e)).toList();
-        gratitude = (d['gratitude'] as List? ?? []).map((e) => Gratitude.fromJson(e)).toList();
-        suggestions = (d['suggestions'] as List? ?? []).map((e) => Suggestion.fromJson(e)).toList();
-        sleepLogs = (d['sleepLogs'] as List? ?? []).map((e) => SleepLog.fromJson(e)).toList();
-        moodLogs = (d['moodLogs'] as List? ?? []).map((e) => MoodLog.fromJson(e)).toList();
-        notes = (d['notes'] as List? ?? []).map((e) => AppNote.fromJson(e)).toList();
-        measurements = (d['measurements'] as List? ?? []).map((e) => BodyMeasurement.fromJson(e)).toList();
-        sportPrograms = (d['sportPrograms'] as List? ?? []).map((e) => SportProgram.fromJson(e)).toList();
-        bingoData = Map<String, dynamic>.from(d['bingoData'] ?? {});
-        dailyAnswers = Map<String, String>.from(d['dailyAnswers'] ?? {});
-        sharedGoals = List<Map<String, dynamic>>.from(d['sharedGoals'] ?? []);
-        if (d['letter'] != null) letter = FutureLetter.fromJson(d['letter']);
+        await _sb.auth.signInAnonymously();
       } catch (_) {}
+    }
+
+    // 2) Supabase'den çek (önce cloud)
+    try {
+      final uid = _sb.auth.currentUser?.id;
+      if (uid != null) {
+        final row = await _sb
+            .from(_table)
+            .select('data')
+            .eq('user_id', uid)
+            .maybeSingle();
+        if (row != null && row['data'] != null) {
+          _fromMap(Map<String, dynamic>.from(row['data'] as Map));
+          // Cloud'u lokale yedekle
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_localKey, jsonEncode(row['data']));
+          _loaded = true;
+          notifyListeners();
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // 3) Cloud yoksa / hata varsa lokalden yükle
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_localKey);
+    if (raw != null) {
+      try { _fromMap(jsonDecode(raw) as Map<String, dynamic>); } catch (_) {}
     }
     _loaded = true;
     notifyListeners();
   }
 
   Future<void> save() async {
+    final map = _toMap();
+
+    // 1) Lokale hemen yaz (offline-first)
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode({
-      'userName': userName,
-      'agendaName': agendaName,
-      'salary': salary,
-      'isDark': isDark,
-      'accentColor': accentColor.value,
-      'todos': todos.map((e) => e.toJson()).toList(),
-      'goals': goals.map((e) => e.toJson()).toList(),
-      'expenses': expenses.map((e) => e.toJson()).toList(),
-      'savings': savings.map((e) => e.toJson()).toList(),
-      'journal': journal.map((e) => e.toJson()).toList(),
-      'gratitude': gratitude.map((e) => e.toJson()).toList(),
-      'suggestions': suggestions.map((e) => e.toJson()).toList(),
-      'sleepLogs': sleepLogs.map((e) => e.toJson()).toList(),
-      'moodLogs': moodLogs.map((e) => e.toJson()).toList(),
-      'notes': notes.map((e) => e.toJson()).toList(),
-      'measurements': measurements.map((e) => e.toJson()).toList(),
-      'sportPrograms': sportPrograms.map((e) => e.toJson()).toList(),
-      'bingoData': bingoData,
-      'dailyAnswers': dailyAnswers,
-      'sharedGoals': sharedGoals,
-      'letter': letter?.toJson(),
-    }));
+    await prefs.setString(_localKey, jsonEncode(map));
+
+    // 2) Supabase'e arka planda gönder
+    final uid = _sb.auth.currentUser?.id;
+    if (uid == null) return;
+
+    _syncing = true;
+    syncError = null;
+    notifyListeners();
+
+    try {
+      await _sb.from(_table).upsert({
+        'user_id': uid,
+        'data': map,
+      });
+      syncError = null;
+    } catch (e) {
+      syncError = e.toString();
+    } finally {
+      _syncing = false;
+      notifyListeners();
+    }
   }
 
   // ─── USER ────────────────────────────────────────────────────────────────

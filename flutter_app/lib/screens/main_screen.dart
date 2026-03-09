@@ -88,6 +88,31 @@ class _MainScreenState extends State<MainScreen> {
           ]),
         ),
         actions: [
+          if (prov.syncing)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: SizedBox(
+                width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (prov.syncError != null)
+            Tooltip(
+              message: 'Senkronizasyon hatası — dokunun',
+              child: IconButton(
+                icon: const Icon(Icons.cloud_off_outlined,
+                    size: 20, color: AppTheme.accent2),
+                onPressed: () => prov.save(),
+              ),
+            )
+          else
+            Tooltip(
+              message: 'Bulutla senkronize',
+              child: Icon(Icons.cloud_done_outlined,
+                  size: 20,
+                  color: (isDark ? AppTheme.mutedDark : AppTheme.mutedLight)
+                      .withOpacity(0.5)),
+            ),
           IconButton(
             tooltip: 'Ayarlar',
             icon: const Icon(Icons.settings_outlined, size: 22),
