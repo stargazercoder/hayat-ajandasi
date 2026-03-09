@@ -100,44 +100,183 @@ class AppProvider extends ChangeNotifier {
     if (d['letter'] != null) letter = FutureLetter.fromJson(d['letter']);
   }
 
-  Future<void> load() async {
-    // 1) Önce anonim giriş yap / mevcut oturumu al
-    final session = _sb.auth.currentSession;
-    if (session == null) {
-      try {
-        await _sb.auth.signInAnonymously();
-      } catch (_) {}
-    }
+  // ─── AUTH HELPERS ────────────────────────────────────────────────────────
+  User? get currentUser    => _sb.auth.currentUser;
+  bool  get isSignedIn     => currentUser != null;
+  bool  get isAnonymous    => currentUser?.isAnonymous ?? false;
+  String get authProvider  {
+    final identities = currentUser?.identities ?? [];
+    if (identities.isEmpty)   return 'anonymous';
+    final p = identities.first.provider;
+    if (p == 'email')         return 'email';
+    if (p == 'phone')         return 'phone';
+    if (p == 'google')        return 'google';
+    if (p == 'facebook')      return 'facebook';
+    return p;
+  }
 
-    // 2) Supabase'den çek (önce cloud)
+  String? authError;
+  bool    authLoading = false;
+
+  void _setAuthLoading(bool v) { authLoading = v; notifyListeners(); }
+  void _setAuthError(String? e) { authError = e; notifyListeners(); }
+
+  /// Anonim giriş
+  Future<bool> signInAnon() async {
+    _setAuthLoading(true); _setAuthError(null);
     try {
-      final uid = _sb.auth.currentUser?.id;
-      if (uid != null) {
-        final row = await _sb
-            .from(_table)
-            .select('data')
-            .eq('user_id', uid)
-            .maybeSingle();
-        if (row != null && row['data'] != null) {
-          _fromMap(Map<String, dynamic>.from(row['data'] as Map));
-          // Cloud'u lokale yedekle
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_localKey, jsonEncode(row['data']));
-          _loaded = true;
-          notifyListeners();
-          return;
-        }
-      }
-    } catch (_) {}
+      await _sb.auth.signInAnonymously();
+      await loadUserData();
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
 
-    // 3) Cloud yoksa / hata varsa lokalden yükle
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_localKey);
-    if (raw != null) {
-      try { _fromMap(jsonDecode(raw) as Map<String, dynamic>); } catch (_) {}
+  /// Email ile kayıt
+  Future<bool> signUpEmail(String email, String password) async {
+    _setAuthLoading(true); _setAuthError(null);
+    try {
+      await _sb.auth.signUp(email: email, password: password);
+      await loadUserData();
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
+
+  /// Email ile giriş
+  Future<bool> signInEmail(String email, String password) async {
+    _setAuthLoading(true); _setAuthError(null);
+    try {
+      await _sb.auth.signInWithPassword(email: email, password: password);
+      await loadUserData();
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
+
+  /// Telefon OTP gönder
+  Future<bool> sendPhoneOtp(String phone) async {
+    _setAuthLoading(true); _setAuthError(null);
+    try {
+      await _sb.auth.signInWithOtp(phone: phone);
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
+
+  /// Telefon OTP doğrula
+  Future<bool> verifyPhoneOtp(String phone, String token) async {
+    _setAuthLoading(true); _setAuthError(null);
+    try {
+      await _sb.auth.verifyOTP(phone: phone, token: token, type: OtpType.sms);
+      await loadUserData();
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
+
+  /// Google ile giriş (web OAuth redirect)
+  Future<bool> signInGoogle() async {
+    _setAuthLoading(true); _setAuthError(null);
+    try {
+      await _sb.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'https://stargazercoder.github.io/hayat-ajandasi/',
+      );
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
+
+  /// Facebook ile giriş (web OAuth redirect)
+  Future<bool> signInFacebook() async {
+    _setAuthLoading(true); _setAuthError(null);
+    try {
+      await _sb.auth.signInWithOAuth(
+        OAuthProvider.facebook,
+        redirectTo: 'https://stargazercoder.github.io/hayat-ajandasi/',
+      );
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
+
+  /// Anonim hesaba email bağla (yükselt)
+  Future<bool> linkEmail(String email, String password) async {
+    _setAuthLoading(true); _setAuthError(null);
+    try {
+      await _sb.auth.updateUser(UserAttributes(email: email, password: password));
+      return true;
+    } on AuthException catch (e) {
+      _setAuthError(e.message);
+      return false;
+    } finally { _setAuthLoading(false); }
+  }
+
+  /// Çıkış yap
+  Future<void> signOut() async {
+    await _sb.auth.signOut();
+    notifyListeners();
+  }
+
+  // ─── LOAD / SAVE DATA ────────────────────────────────────────────────────
+  Future<void> load() async {
+    // Oturum varsa veriyi yükle, yoksa auth ekranı gösterilecek
+    if (_sb.auth.currentUser != null) {
+      await loadUserData();
+    } else {
+      // Lokali yükle (offline fallback)
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_localKey);
+      if (raw != null) {
+        try { _fromMap(jsonDecode(raw) as Map<String, dynamic>); } catch (_) {}
+      }
     }
     _loaded = true;
     notifyListeners();
+  }
+
+  Future<void> loadUserData() async {
+    try {
+      final uid = _sb.auth.currentUser?.id;
+      if (uid == null) return;
+      final row = await _sb.from(_table).select('data').eq('user_id', uid).maybeSingle();
+      if (row != null && row['data'] != null) {
+        _fromMap(Map<String, dynamic>.from(row['data'] as Map));
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_localKey, jsonEncode(row['data']));
+      } else {
+        // Cloud'da yok, lokali dene
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_localKey);
+        if (raw != null) {
+          try { _fromMap(jsonDecode(raw) as Map<String, dynamic>); } catch (_) {}
+        }
+      }
+      notifyListeners();
+    } catch (_) {
+      // Offline fallback
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_localKey);
+      if (raw != null) {
+        try { _fromMap(jsonDecode(raw) as Map<String, dynamic>); } catch (_) {}
+      }
+      notifyListeners();
+    }
   }
 
   Future<void> save() async {

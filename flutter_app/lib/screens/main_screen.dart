@@ -18,6 +18,7 @@ import 'suggestions_screen.dart';
 import 'letter_screen.dart';
 import 'sleep_screen.dart';
 import 'social_screen.dart';
+import 'auth_screen.dart';
 
 const String _appVersion = '1.0.0';
 
@@ -239,13 +240,63 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
                 const SizedBox(height: 24),
 
-                // ── KULLANICI ────────────────────────────────────
+                // ── HESAP ────────────────────────────────────────
                 _label('👤 Hesap', muted),
+                // Auth durumu kartı
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: surf2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: accent.withOpacity(0.35)),
+                  ),
+                  child: Row(children: [
+                    Text(_authProviderEmoji(prov.authProvider), style: const TextStyle(fontSize: 24)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_authProviderLabel(prov.authProvider),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      Text(
+                        prov.currentUser?.email ?? prov.currentUser?.phone ?? prov.currentUser?.id?.substring(0,8) ?? '—',
+                        style: TextStyle(fontSize: 11, color: muted),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ])),
+                    if (prov.isAnonymous)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppTheme.gold.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(color: AppTheme.gold.withOpacity(0.4)),
+                        ),
+                        child: const Text('Geçici', style: TextStyle(
+                            fontSize: 10, color: AppTheme.gold, fontWeight: FontWeight.w700)),
+                      ),
+                  ]),
+                ),
+                if (prov.isAnonymous) ...[
+                  _Tile(
+                    icon: '✉️',
+                    title: 'Email Ekle (Hesabı Koru)',
+                    subtitle: '30 gün sonra silinmesin',
+                    onTap: () => _linkEmailModal(context, prov),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 _Tile(
                   icon: '✏️',
                   title: 'Profili Düzenle',
                   subtitle: prov.userName.isNotEmpty ? prov.userName : '—',
                   onTap: () => _editProfile(context, prov),
+                ),
+                const SizedBox(height: 8),
+                _Tile(
+                  icon: '🚪',
+                  title: 'Çıkış Yap',
+                  subtitle: 'Hesaptan çıkış yap',
+                  onTap: () => _confirmSignOut(context, prov),
                 ),
                 const SizedBox(height: 24),
 
@@ -349,6 +400,89 @@ class _SettingsSheetState extends State<_SettingsSheet> {
         ]),
       ),
     );
+  }
+
+  // ── AUTH HELPERS ─────────────────────────────────────────────────────────
+  String _authProviderEmoji(String p) => switch(p) {
+    'email'    => '✉️',
+    'phone'    => '📱',
+    'google'   => '🔵',
+    'facebook' => '🔷',
+    _          => '👻',
+  };
+
+  String _authProviderLabel(String p) => switch(p) {
+    'email'    => 'Email ile giriş yapıldı',
+    'phone'    => 'Telefon ile giriş yapıldı',
+    'google'   => 'Google hesabı',
+    'facebook' => 'Facebook hesabı',
+    _          => 'Anonim kullanıcı',
+  };
+
+  void _confirmSignOut(BuildContext ctx, AppProvider prov) {
+    showDialog(context: ctx, builder: (_) => AlertDialog(
+      backgroundColor: AppTheme.surfaceDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Çıkış Yap', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      content: Text(
+        prov.isAnonymous
+            ? '⚠️ Anonim hesabındasın. Çıkış yaparsanız verileriniz kaybolabilir!
+Devam etmek istiyorsanız önce email ekleyin.'
+            : 'Hesaptan çıkış yapılacak.',
+        style: const TextStyle(color: AppTheme.mutedDark, fontSize: 14, height: 1.5),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+        ElevatedButton(
+          onPressed: () async {
+            Navigator.pop(ctx);  // dialog
+            Navigator.pop(ctx);  // settings sheet
+            await prov.signOut();
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent2, foregroundColor: Colors.white),
+          child: const Text('Çıkış Yap'),
+        ),
+      ],
+    ));
+  }
+
+  void _linkEmailModal(BuildContext ctx, AppProvider prov) {
+    final emailCtrl = TextEditingController();
+    final passCtrl  = TextEditingController();
+    showAppModal(ctx, child: StatefulBuilder(builder: (ctx, ss) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        frauncesText('✉️ Email Ekle', size: 20),
+        const SizedBox(height: 6),
+        const Text('Anonim hesabına email ekleyerek verilerini kalıcı hale getir.',
+            style: TextStyle(fontSize: 13, color: AppTheme.mutedDark)),
+        const SizedBox(height: 16),
+        const Text('Email', style: TextStyle(fontSize: 11, color: AppTheme.mutedDark)),
+        const SizedBox(height: 5),
+        TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(hintText: 'email@ornek.com')),
+        const SizedBox(height: 12),
+        const Text('Şifre', style: TextStyle(fontSize: 11, color: AppTheme.mutedDark)),
+        const SizedBox(height: 5),
+        TextField(controller: passCtrl, obscureText: true,
+            decoration: const InputDecoration(hintText: 'En az 6 karakter')),
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal'))),
+          const SizedBox(width: 10),
+          Expanded(child: ElevatedButton(
+            onPressed: () async {
+              final ok = await prov.linkEmail(emailCtrl.text.trim(), passCtrl.text.trim());
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                _setStatus(ok ? '✅ Email başarıyla eklendi!' : '❌ ${prov.authError}', ok: ok);
+              }
+            },
+            child: const Text('Ekle & Koru'),
+          )),
+        ]),
+      ],
+    )));
   }
 
   Widget _label(String text, Color muted) => Padding(

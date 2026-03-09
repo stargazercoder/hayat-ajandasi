@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/app_provider.dart';
 import 'theme/app_theme.dart';
+import 'screens/auth_screen.dart';
 import 'screens/onboard_screen.dart';
 import 'screens/main_screen.dart';
 
@@ -28,12 +29,38 @@ void main() async {
   );
 }
 
-class HayatAjandasiApp extends StatelessWidget {
+class HayatAjandasiApp extends StatefulWidget {
   const HayatAjandasiApp({super.key});
+  @override
+  State<HayatAjandasiApp> createState() => _HayatAjandasiAppState();
+}
+
+class _HayatAjandasiAppState extends State<HayatAjandasiApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Auth durum değişikliklerini dinle
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final prov = context.read<AppProvider>();
+      if (data.event == AuthChangeEvent.signedIn) {
+        prov.loadUserData();
+      }
+      prov.notifyListeners();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<AppProvider>();
+
+    Widget home;
+    if (!prov.isSignedIn) {
+      home = const AuthScreen();
+    } else if (prov.userName.isEmpty) {
+      home = const OnboardScreen();
+    } else {
+      home = const MainScreen();
+    }
 
     return MaterialApp(
       title: prov.agendaName,
@@ -41,7 +68,7 @@ class HayatAjandasiApp extends StatelessWidget {
       theme: AppTheme.light(prov.accentColor),
       darkTheme: AppTheme.dark(prov.accentColor),
       themeMode: prov.isDark ? ThemeMode.dark : ThemeMode.light,
-      home: prov.userName.isEmpty ? const OnboardScreen() : const MainScreen(),
+      home: home,
     );
   }
 }
