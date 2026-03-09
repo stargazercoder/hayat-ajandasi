@@ -46,7 +46,7 @@ jobs:
           flutter build web \
             --release \
             --base-href "/hayat-ajandasi/" \
-            --web-renderer canvaskit
+            --web-renderer html
 
       - name: 📤 Upload artifact
         uses: actions/upload-pages-artifact@v3
