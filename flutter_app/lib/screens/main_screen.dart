@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -120,36 +121,49 @@ class _NavBar extends StatelessWidget {
     final isDark = context.watch<AppProvider>().isDark;
     return SizedBox(
       height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        separatorBuilder: (_, __) => const SizedBox(width: 2),
-        itemCount: items.length,
-        itemBuilder: (_, i) {
-          final active = i == selected;
-          return GestureDetector(
-            onTap: () => onTap(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 4),
-              decoration: BoxDecoration(
-                color: active ? accent : Colors.transparent,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Text(
-                '${items[i].icon} ${items[i].label}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  color: active
-                      ? Colors.black
-                      : (isDark ? AppTheme.mutedDark : AppTheme.mutedLight),
+      child: ScrollConfiguration(
+        behavior: _DragScrollBehavior(),
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          separatorBuilder: (_, __) => const SizedBox(width: 2),
+          itemCount: items.length,
+          itemBuilder: (_, i) {
+            final active = i == selected;
+            return GestureDetector(
+              onTap: () => onTap(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 4),
+                decoration: BoxDecoration(
+                  color: active ? accent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  '${items[i].icon} ${items[i].label}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active
+                        ? Colors.black
+                        : (isDark ? AppTheme.mutedDark : AppTheme.mutedLight),
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
+}
+
+class _DragScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
 }
